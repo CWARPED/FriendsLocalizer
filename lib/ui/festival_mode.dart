@@ -32,8 +32,10 @@ class FestivalMode {
   static Future<bool> start() async {
     if (!Platform.isAndroid && !Platform.isIOS) return false;
 
-    // 1) Localisation : au premier plan, puis élévation en « tout le temps »
-    //    (indispensable pour lire le GPS en arrière-plan).
+    // 1) Localisation : « pendant l'utilisation » suffit. Un service avant-plan
+    //    de type `location` peut lire le GPS tant qu'il tourne ; Android ne
+    //    propose de toute façon pas « tout le temps » via le dialogue runtime
+    //    (ça se fait dans les réglages système, optionnel pour plus de fiabilité).
     var perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
@@ -41,10 +43,6 @@ class FestivalMode {
     if (perm == LocationPermission.denied ||
         perm == LocationPermission.deniedForever) {
       return false;
-    }
-    if (perm != LocationPermission.always) {
-      perm = await Geolocator.requestPermission();
-      if (perm != LocationPermission.always) return false;
     }
 
     // 2) Notification (obligatoire pour un service avant-plan).

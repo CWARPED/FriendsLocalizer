@@ -36,9 +36,8 @@ class _FestivalModeCardState extends State<FestivalModeCard> {
       if (!mounted) return;
       if (!ok) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'Autorise la localisation « tout le temps » et les notifications '
-                'pour rester localisable.')));
+            content: Text('Autorise la localisation et les notifications '
+                'pour activer le mode festival.')));
         setState(() {
           _on = false;
           _busy = false;
@@ -84,8 +83,8 @@ class _FestivalModeCardState extends State<FestivalModeCard> {
                     style: TextStyle(color: p.textPrimary, fontSize: 15)),
                 Text(
                   _on
-                      ? 'Tu es localisable même appli fermée'
-                      : 'Localisation en arrière-plan désactivée',
+                      ? 'Localisable en arrière-plan'
+                      : 'Autoriser ma localisation en arrière-plan',
                   style: TextStyle(color: p.textMuted, fontSize: 12),
                 ),
               ],
