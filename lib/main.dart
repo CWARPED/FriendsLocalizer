@@ -9,6 +9,8 @@ import 'ui/real_repository.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FestivalMode.init(); // prépare le service avant-plan (mode festival)
+  // Relance le mode festival s'il était actif avant de quitter (reste localisable).
+  await FestivalMode.restoreIfEnabled();
   final prefs = await SharedPreferences.getInstance();
   final repo = await RealRepository.load(PrefsStore(prefs));
   runApp(AppScope(repository: repo, child: const FriendsApp()));
