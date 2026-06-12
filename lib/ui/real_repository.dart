@@ -209,6 +209,7 @@ class RealRepository extends AppRepository {
   AppSettings get settings => _settings;
   @override
   void updateSettings(AppSettings settings) {
+    final urlChanged = settings.serverUrl != _settings.serverUrl;
     _settings = settings;
     _store.setString(
         _kSettings,
@@ -220,6 +221,19 @@ class RealRepository extends AppRepository {
           'lon': settings.myLon,
           'theme': settings.themeMode.name,
         }));
+    // Changer l'adresse du relais coupe la session en cours pour qu'elle se
+    // reconstruise sur le NOUVEAU serveur au prochain ensureConnected /
+    // refreshGroups — sans avoir à redémarrer l'app.
+    if (urlChanged && _transport != null) {
+      _transport?.stop();
+      _transport = null;
+      _node = null;
+      _location = null;
+      _directory = null;
+      _fixed = null;
+      _locationProvider = null;
+      _located.clear();
+    }
     notifyListeners();
   }
 
