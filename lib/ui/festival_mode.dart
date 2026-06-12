@@ -64,4 +64,36 @@ class FestivalMode {
   }
 
   static Future<bool> isOn() => FlutterForegroundTask.isRunningService;
+
+  /// La localisation est-elle accordée « tout le temps » (arrière-plan) ?
+  static Future<bool> isAlways() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return false;
+    return await Geolocator.checkPermission() == LocationPermission.always;
+  }
+
+  /// Tente de passer la localisation en « tout le temps ».
+  ///
+  /// Renvoie true si c'est déjà/maintenant accordé. Sinon (cas courant sur
+  /// Android 11+, où le système ne propose pas « tout le temps » en pop-up),
+  /// ouvre les réglages de l'app pour que l'utilisateur le coche à la main et
+  /// renvoie false (action en attente côté utilisateur).
+  static Future<bool> requestAlways() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return false;
+    var perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+    }
+    if (perm == LocationPermission.always) return true;
+    if (perm == LocationPermission.denied ||
+        perm == LocationPermission.deniedForever) {
+      await Geolocator.openAppSettings();
+      return false;
+    }
+    // whileInUse accordé : tente l'escalade vers « tout le temps » (inline sur
+    // Android 10, sinon il faut passer par les réglages système).
+    perm = await Geolocator.requestPermission();
+    if (perm == LocationPermission.always) return true;
+    await Geolocator.openAppSettings();
+    return false;
+  }
 }
