@@ -35,16 +35,21 @@ Handler buildServer({required RelayHub hub, required KeyDirectory directory}) {
 
   router.get(
     '/relay',
-    webSocketHandler((WebSocketChannel channel, String? protocol) {
-      final connId = hub.connect((frame) => channel.sink.add(frame));
-      channel.stream.listen(
-        (data) {
-          if (data is List<int>) hub.ingest(connId, Uint8List.fromList(data));
-        },
-        onDone: () => hub.disconnect(connId),
-        onError: (_) => hub.disconnect(connId),
-      );
-    }),
+    webSocketHandler(
+      (WebSocketChannel channel, String? protocol) {
+        final connId = hub.connect((frame) => channel.sink.add(frame));
+        channel.stream.listen(
+          (data) {
+            if (data is List<int>) hub.ingest(connId, Uint8List.fromList(data));
+          },
+          onDone: () => hub.disconnect(connId),
+          onError: (_) => hub.disconnect(connId),
+        );
+      },
+      // Ping régulier : garde la connexion au chaud (NAT/pare-feu) et permet de
+      // détecter et purger les clients réellement morts.
+      pingInterval: const Duration(seconds: 30),
+    ),
   );
 
   return router.call;
