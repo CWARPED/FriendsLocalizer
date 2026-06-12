@@ -36,9 +36,14 @@ class _RadarScreenState extends State<RadarScreen> {
   bool _listExpanded = true;
   int? _sessionEndMs;
   Timer? _ticker;
+  int _lastLiveRequestMs = 0; // dernière re-demande pendant la session
   GeoPoint? _me; // ma position courante (GPS sur mobile) ; null tant qu'inconnue
   bool _meInit = false;
   StreamSubscription<GeoPoint>? _posSub; // suit ma position tant que l'écran vit
+
+  /// Pendant une session, on redemande la position des amis à cet intervalle
+  /// (sinon le « il y a … » ne ferait que grandir).
+  static const int _liveRequestIntervalMs = 10000;
 
   @override
   void initState() {
@@ -94,20 +99,33 @@ class _RadarScreenState extends State<RadarScreen> {
     await _refreshMe(); // rafraîchit aussi ma propre position (centre du radar)
     if (!mounted) return;
     if (live) {
-      setState(() =>
-          _sessionEndMs = DateTime.now().millisecondsSinceEpoch + kSessionDurationMs);
+      final startMs = DateTime.now().millisecondsSinceEpoch;
+      _lastLiveRequestMs = startMs;
+      setState(() => _sessionEndMs = startMs + kSessionDurationMs);
       _ticker?.cancel();
       _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
         final end = _sessionEndMs;
-        if (!mounted || end == null ||
-            DateTime.now().millisecondsSinceEpoch >= end) {
+        if (!mounted || end == null || nowMs >= end) {
           t.cancel();
           if (mounted) setState(() => _sessionEndMs = null);
-        } else {
-          setState(() {}); // décompte ; ma position est suivie par _posSub
+          return;
         }
+        // Redemande régulièrement pour rafraîchir la position des amis.
+        if (nowMs - _lastLiveRequestMs >= _liveRequestIntervalMs) {
+          _lastLiveRequestMs = nowMs;
+          AppScope.of(context).requestLocation(
+              groupId: widget.groupId, targetId: kAllMembers, live: true);
+        }
+        setState(() {}); // décompte + fraîcheur ; ma position via _posSub
       });
     }
+  }
+
+  /// Arrête la session en cours (le bouton compteur).
+  void _stopSession() {
+    _ticker?.cancel();
+    setState(() => _sessionEndMs = null);
   }
 
   @override
@@ -203,9 +221,9 @@ class _RadarScreenState extends State<RadarScreen> {
             )
           else
             TextButton.icon(
-              icon: const Icon(Icons.timer, size: 18),
+              icon: const Icon(Icons.stop_circle_outlined, size: 18),
               label: Text(_mmss(remaining)),
-              onPressed: null,
+              onPressed: _stopSession,
             ),
         ],
       ),
