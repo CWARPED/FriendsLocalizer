@@ -1,0 +1,33 @@
+# Relais FriendsLocalizer pour une infra nginx-proxy + acme-companion
+# (https://github.com/nginx-proxy/nginx-proxy). nginx-proxy se configure via des
+# variables d'environnement sur le conteneur — aucun bloc Nginx à écrire à la main.
+#
+# Comme un domaine = une app dans nginx-proxy, on partage le domaine existant par
+# CHEMIN : le relais vit sous /fl (l'app principale reste à la racine).
+#
+# Cas 1 (le plus simple) : AJOUTE le service `fl-relay` ci-dessous directement
+# dans le compose où tournent déjà nginx-proxy + ton app. Il partage alors le
+# réseau par défaut et nginx-proxy le voit automatiquement.
+#   -> Dans ce cas, SUPPRIME la section `networks:` (du service et du bas).
+#   -> Et ajoute `VIRTUAL_PATH: /` à ton app principale (sinon elle perd sa racine).
+#
+# Cas 2 : lance ce fichier à part. Rattache alors le relais au réseau de
+# nginx-proxy (remplace `proxy-net` par le nom réel, cf. `docker network ls`).
+services:
+  fl-relay:
+    image: cwarp/friendslocalizer-relay:latest
+    container_name: fl-relay
+    expose:
+      - "8080"
+    environment:
+      VIRTUAL_HOST: your-domain.example   # ton domaine (déjà servi par ton app)
+      VIRTUAL_PATH: /fl/                   # le relais est accessible sous /fl
+      VIRTUAL_DEST: /                      # retire le préfixe /fl avant le relais
+      VIRTUAL_PORT: "8080"
+    restart: unless-stopped
+    networks:
+      - proxy-net
+
+networks:
+  proxy-net:
+    external: true
