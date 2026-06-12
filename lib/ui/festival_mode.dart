@@ -131,4 +131,30 @@ class FestivalMode {
     await Geolocator.openAppSettings();
     return false;
   }
+
+  /// L'app est-elle exemptée d'optimisation batterie ? (true = pas de bridage,
+  /// donc le service avant-plan ne sera pas tué par l'économie de batterie.)
+  static Future<bool> isBatteryUnrestricted() async {
+    if (!Platform.isAndroid) return true; // notion Android uniquement
+    try {
+      return await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+    } catch (_) {
+      return true; // en cas de doute, ne pas afficher d'alerte inutile
+    }
+  }
+
+  /// Demande l'exemption d'optimisation batterie (pop-up système). C'est le
+  /// principal levier de fiabilité : sans ça, certains fabricants coupent le
+  /// service en arrière-plan au bout de quelques minutes.
+  static Future<void> requestBatteryUnrestricted() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+    } catch (_) {
+      // certains appareils n'autorisent pas la pop-up : on ouvre les réglages
+      try {
+        await FlutterForegroundTask.openIgnoreBatteryOptimizationSettings();
+      } catch (_) {}
+    }
+  }
 }

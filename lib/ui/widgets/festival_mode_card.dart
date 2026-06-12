@@ -16,6 +16,7 @@ class _FestivalModeCardState extends State<FestivalModeCard>
     with WidgetsBindingObserver {
   bool _on = false;
   bool _always = false; // localisation « tout le temps » (arrière-plan)
+  bool _battery = true; // true = exempté d'optimisation batterie (pas de bridage)
   bool _busy = false;
 
   bool get _isMobile => Platform.isAndroid || Platform.isIOS;
@@ -45,10 +46,12 @@ class _FestivalModeCardState extends State<FestivalModeCard>
   Future<void> _refresh() async {
     final on = await FestivalMode.isOn();
     final always = await FestivalMode.isAlways();
+    final battery = await FestivalMode.isBatteryUnrestricted();
     if (!mounted) return;
     setState(() {
       _on = on;
       _always = always;
+      _battery = battery;
     });
   }
 
@@ -68,13 +71,10 @@ class _FestivalModeCardState extends State<FestivalModeCard>
         });
         return;
       }
-      final always = await FestivalMode.isAlways();
       if (!mounted) return;
-      setState(() {
-        _on = true;
-        _always = always;
-        _busy = false;
-      });
+      await _refresh(); // _on / _always / _battery
+      if (!mounted) return;
+      setState(() => _busy = false);
     } else {
       await FestivalMode.stop();
       if (!mounted) return;
@@ -99,6 +99,19 @@ class _FestivalModeCardState extends State<FestivalModeCard>
     if (!mounted) return;
     setState(() {
       _always = always;
+      _busy = false;
+    });
+  }
+
+  Future<void> _requestBattery() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    await FestivalMode.requestBatteryUnrestricted();
+    if (!mounted) return;
+    final battery = await FestivalMode.isBatteryUnrestricted();
+    if (!mounted) return;
+    setState(() {
+      _battery = battery;
       _busy = false;
     });
   }
@@ -150,6 +163,17 @@ class _FestivalModeCardState extends State<FestivalModeCard>
                 onPressed: _busy ? null : _requestAlways,
                 icon: const Icon(Icons.shield_outlined, size: 18),
                 label: const Text('Autoriser tout le temps (veille)'),
+              ),
+            ),
+          // Mode actif mais optimisation batterie active : la lever améliore
+          // nettement la disponibilité en arrière-plan.
+          if (_on && !_battery)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _busy ? null : _requestBattery,
+                icon: const Icon(Icons.battery_saver_outlined, size: 18),
+                label: const Text('Désactiver l\'optimisation batterie'),
               ),
             ),
         ],
