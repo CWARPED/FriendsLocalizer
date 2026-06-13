@@ -23,11 +23,24 @@ class GeolocatorLocationProvider implements LocationProvider {
           perm == LocationPermission.deniedForever) {
         return null;
       }
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-      return LocationFix(GeoPoint(pos.latitude, pos.longitude), pos.accuracy);
+      try {
+        // Borne l'attente : en intérieur/foule le fix peut tarder.
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 8)),
+        );
+        return LocationFix(GeoPoint(pos.latitude, pos.longitude), pos.accuracy);
+      } catch (_) {
+        // GPS lent/indisponible : repli sur la dernière position connue plutôt
+        // que de rester muet (on renvoie quelque chose, même un peu ancien).
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) {
+          return LocationFix(
+              GeoPoint(last.latitude, last.longitude), last.accuracy);
+        }
+        return null;
+      }
     } catch (_) {
       return null;
     }
