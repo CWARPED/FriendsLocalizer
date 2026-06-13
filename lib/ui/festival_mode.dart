@@ -21,7 +21,10 @@ class FestivalMode {
       foregroundTaskOptions: ForegroundTaskOptions(
         // Réveille onRepeatEvent toutes les 30 s pour reconnecter si besoin.
         eventAction: ForegroundTaskEventAction.repeat(30000),
-        autoRunOnBoot: false,
+        // Relance le service après un redémarrage du téléphone et après une
+        // mise à jour de l'app, s'il était actif (fiabilité, #4).
+        autoRunOnBoot: true,
+        autoRunOnMyPackageReplaced: true,
         allowWakeLock: true,
         allowWifiLock: true,
       ),
